@@ -26,15 +26,15 @@ int main(void)
     {
         if(left_wheel.new_value)
         {
-            uint16_t len = sprintf((char *)sciBuffer, "Left Wheel RPM: %lu\n", left_wheel.rpm);
+            uint32_t rpm = get_wheel_rpm(WHEEL_SPEED_FRONT_LEFT);
+            uint16_t len = sprintf((char *)sciBuffer, "Left Wheel RPM: %lu\n", rpm);
             sciSend(sciREG, len, sciBuffer);
-            left_wheel.new_value = false;
         }
         if(right_wheel.new_value)
         {
-            uint16_t len = sprintf((char *)sciBuffer, "Right Wheel RPM: %lu\n", right_wheel.rpm);
+            uint32_t rpm = get_wheel_rpm(WHEEL_SPEED_FRONT_RIGHT);
+            uint16_t len = sprintf((char *)sciBuffer, "Right Wheel RPM: %lu\n", rpm);
             sciSend(sciREG, len, sciBuffer);
-            right_wheel.new_value = false;
         }
     }
 
