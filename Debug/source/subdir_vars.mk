@@ -50,7 +50,8 @@ C_SRCS += \
 ../source/ti_fee_shutdown.c \
 ../source/ti_fee_util.c \
 ../source/ti_fee_writeAsync.c \
-../source/ti_fee_writeSync.c 
+../source/ti_fee_writeSync.c \
+../source/wheel_speed.c 
 
 C_DEPS += \
 ./source/Device_TMS570LS12.d \
@@ -87,7 +88,8 @@ C_DEPS += \
 ./source/ti_fee_shutdown.d \
 ./source/ti_fee_util.d \
 ./source/ti_fee_writeAsync.d \
-./source/ti_fee_writeSync.d 
+./source/ti_fee_writeSync.d \
+./source/wheel_speed.d 
 
 OBJS += \
 ./source/Device_TMS570LS12.obj \
@@ -129,7 +131,8 @@ OBJS += \
 ./source/ti_fee_shutdown.obj \
 ./source/ti_fee_util.obj \
 ./source/ti_fee_writeAsync.obj \
-./source/ti_fee_writeSync.obj 
+./source/ti_fee_writeSync.obj \
+./source/wheel_speed.obj 
 
 ASM_DEPS += \
 ./source/dabort.d \
@@ -178,7 +181,8 @@ OBJS__QUOTED += \
 "source\ti_fee_shutdown.obj" \
 "source\ti_fee_util.obj" \
 "source\ti_fee_writeAsync.obj" \
-"source\ti_fee_writeSync.obj" 
+"source\ti_fee_writeSync.obj" \
+"source\wheel_speed.obj" 
 
 C_DEPS__QUOTED += \
 "source\Device_TMS570LS12.d" \
@@ -215,7 +219,8 @@ C_DEPS__QUOTED += \
 "source\ti_fee_shutdown.d" \
 "source\ti_fee_util.d" \
 "source\ti_fee_writeAsync.d" \
-"source\ti_fee_writeSync.d" 
+"source\ti_fee_writeSync.d" \
+"source\wheel_speed.d" 
 
 ASM_DEPS__QUOTED += \
 "source\dabort.d" \
@@ -259,7 +264,8 @@ C_SRCS__QUOTED += \
 "../source/ti_fee_shutdown.c" \
 "../source/ti_fee_util.c" \
 "../source/ti_fee_writeAsync.c" \
-"../source/ti_fee_writeSync.c" 
+"../source/ti_fee_writeSync.c" \
+"../source/wheel_speed.c" 
 
 ASM_SRCS__QUOTED += \
 "../source/dabort.asm" \
