@@ -41,6 +41,20 @@ typedef struct
     uint16_t wheel_rpm;
 } wheel_speed_data_t;
 
+typedef struct
+{
+    tps_data_t tps_data;
+    brake_data_t front_brake_data;
+    direction_data_t direction_data;
+    wheel_speed_data_t left_wheel_speed_data;
+    wheel_speed_data_t right_wheel_speed_data;
+} sensors_data_t;
+
+
+extern sensors_data_t sensors_data;
+
+
+
 
 void init_sensors(void);
 void run_sensors(void);
