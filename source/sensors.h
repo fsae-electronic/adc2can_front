@@ -1,5 +1,5 @@
 #include "adc_wrapper.h"
-#include "wheel_speed.h"
+#include "freq_measure.h"
 
 
 #define TPS1_CH ADC1
@@ -26,7 +26,7 @@ typedef struct
 typedef struct
 {
     uint16_t front_brake_value;
-    uint16_t calibration_break_value;
+    uint16_t calibration_brake_value;
 } brake_data_t;
 
 typedef struct
@@ -58,3 +58,5 @@ extern sensors_data_t sensors_data;
 
 void init_sensors(void);
 void run_sensors(void);
+void send_data_to_serialplot(void);
+void convert_data(void);

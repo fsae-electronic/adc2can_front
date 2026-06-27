@@ -1,11 +1,13 @@
 "./source/Device_TMS570LS12.obj"
 "./source/Fapi_UserDefinedFunctions.obj"
 "./source/adc.obj"
+"./source/adc_wrapper.obj"
 "./source/can.obj"
 "./source/dabort.obj"
 "./source/ecap.obj"
 "./source/errata_SSWF021_45.obj"
 "./source/esm.obj"
+"./source/freq_measure.obj"
 "./source/notification.obj"
 "./source/pinmux.obj"
 "./source/rti.obj"
@@ -38,7 +40,6 @@
 "./source/ti_fee_util.obj"
 "./source/ti_fee_writeAsync.obj"
 "./source/ti_fee_writeSync.obj"
-"./source/wheel_speed.obj"
 "../source/sys_link.cmd"
 -lrtsv7R4_T_be_v3D16_eabi.lib
 -lF021_API_CortexR4_BE_V3D16_NDS.lib

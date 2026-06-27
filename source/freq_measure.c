@@ -5,6 +5,8 @@
 #include "sys_core.h"
 #include "system.h"
 
+#define FREQ_MEASURE_SIGNAL_TIMEOUT_US 300000.0f
+
 freq_measure_t freq_ch1;
 freq_measure_t freq_ch2;
 
@@ -63,11 +65,33 @@ float get_period_us_measure(freq_measure_id_t measure)
     if (measure == FREQ_MEASURE_CH1)
     {
         freq_ch1.new_value = false;
+
+        if (freq_ch1.cap_ticks == 0U)
+        {
+            return 0.0f;
+        }
+
+        if (((float)freq_ch1.ecap->TSCTR / VCLK4_FREQ) > FREQ_MEASURE_SIGNAL_TIMEOUT_US)
+        {
+            return 0.0f;
+        }
+
         return freq_ch1.period_us;
     }
     else if (measure == FREQ_MEASURE_CH2)
     {
         freq_ch2.new_value = false;
+
+        if (freq_ch2.cap_ticks == 0U)
+        {
+            return 0.0f;
+        }
+
+        if (((float)freq_ch2.ecap->TSCTR / VCLK4_FREQ) > FREQ_MEASURE_SIGNAL_TIMEOUT_US)
+        {
+            return 0.0f;
+        }
+
         return freq_ch2.period_us;
     }
     else
@@ -78,7 +102,7 @@ float get_period_us_measure(freq_measure_id_t measure)
 
 void ecapNotification(ecapBASE_t *ecap, uint16 flags)
 {
-    uint32_t capture_value;
+    (void)flags;
 
     if (ecap == freq_ch1.ecap)
     {

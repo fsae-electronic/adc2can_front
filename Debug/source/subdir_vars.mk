@@ -19,10 +19,12 @@ C_SRCS += \
 ../source/Device_TMS570LS12.c \
 ../source/Fapi_UserDefinedFunctions.c \
 ../source/adc.c \
+../source/adc_wrapper.c \
 ../source/can.c \
 ../source/ecap.c \
 ../source/errata_SSWF021_45.c \
 ../source/esm.c \
+../source/freq_measure.c \
 ../source/notification.c \
 ../source/pinmux.c \
 ../source/rti.c \
@@ -50,17 +52,18 @@ C_SRCS += \
 ../source/ti_fee_shutdown.c \
 ../source/ti_fee_util.c \
 ../source/ti_fee_writeAsync.c \
-../source/ti_fee_writeSync.c \
-../source/wheel_speed.c 
+../source/ti_fee_writeSync.c 
 
 C_DEPS += \
 ./source/Device_TMS570LS12.d \
 ./source/Fapi_UserDefinedFunctions.d \
 ./source/adc.d \
+./source/adc_wrapper.d \
 ./source/can.d \
 ./source/ecap.d \
 ./source/errata_SSWF021_45.d \
 ./source/esm.d \
+./source/freq_measure.d \
 ./source/notification.d \
 ./source/pinmux.d \
 ./source/rti.d \
@@ -88,18 +91,19 @@ C_DEPS += \
 ./source/ti_fee_shutdown.d \
 ./source/ti_fee_util.d \
 ./source/ti_fee_writeAsync.d \
-./source/ti_fee_writeSync.d \
-./source/wheel_speed.d 
+./source/ti_fee_writeSync.d 
 
 OBJS += \
 ./source/Device_TMS570LS12.obj \
 ./source/Fapi_UserDefinedFunctions.obj \
 ./source/adc.obj \
+./source/adc_wrapper.obj \
 ./source/can.obj \
 ./source/dabort.obj \
 ./source/ecap.obj \
 ./source/errata_SSWF021_45.obj \
 ./source/esm.obj \
+./source/freq_measure.obj \
 ./source/notification.obj \
 ./source/pinmux.obj \
 ./source/rti.obj \
@@ -131,8 +135,7 @@ OBJS += \
 ./source/ti_fee_shutdown.obj \
 ./source/ti_fee_util.obj \
 ./source/ti_fee_writeAsync.obj \
-./source/ti_fee_writeSync.obj \
-./source/wheel_speed.obj 
+./source/ti_fee_writeSync.obj 
 
 ASM_DEPS += \
 ./source/dabort.d \
@@ -145,11 +148,13 @@ OBJS__QUOTED += \
 "source\Device_TMS570LS12.obj" \
 "source\Fapi_UserDefinedFunctions.obj" \
 "source\adc.obj" \
+"source\adc_wrapper.obj" \
 "source\can.obj" \
 "source\dabort.obj" \
 "source\ecap.obj" \
 "source\errata_SSWF021_45.obj" \
 "source\esm.obj" \
+"source\freq_measure.obj" \
 "source\notification.obj" \
 "source\pinmux.obj" \
 "source\rti.obj" \
@@ -181,17 +186,18 @@ OBJS__QUOTED += \
 "source\ti_fee_shutdown.obj" \
 "source\ti_fee_util.obj" \
 "source\ti_fee_writeAsync.obj" \
-"source\ti_fee_writeSync.obj" \
-"source\wheel_speed.obj" 
+"source\ti_fee_writeSync.obj" 
 
 C_DEPS__QUOTED += \
 "source\Device_TMS570LS12.d" \
 "source\Fapi_UserDefinedFunctions.d" \
 "source\adc.d" \
+"source\adc_wrapper.d" \
 "source\can.d" \
 "source\ecap.d" \
 "source\errata_SSWF021_45.d" \
 "source\esm.d" \
+"source\freq_measure.d" \
 "source\notification.d" \
 "source\pinmux.d" \
 "source\rti.d" \
@@ -219,8 +225,7 @@ C_DEPS__QUOTED += \
 "source\ti_fee_shutdown.d" \
 "source\ti_fee_util.d" \
 "source\ti_fee_writeAsync.d" \
-"source\ti_fee_writeSync.d" \
-"source\wheel_speed.d" 
+"source\ti_fee_writeSync.d" 
 
 ASM_DEPS__QUOTED += \
 "source\dabort.d" \
@@ -233,10 +238,12 @@ C_SRCS__QUOTED += \
 "../source/Device_TMS570LS12.c" \
 "../source/Fapi_UserDefinedFunctions.c" \
 "../source/adc.c" \
+"../source/adc_wrapper.c" \
 "../source/can.c" \
 "../source/ecap.c" \
 "../source/errata_SSWF021_45.c" \
 "../source/esm.c" \
+"../source/freq_measure.c" \
 "../source/notification.c" \
 "../source/pinmux.c" \
 "../source/rti.c" \
@@ -264,8 +271,7 @@ C_SRCS__QUOTED += \
 "../source/ti_fee_shutdown.c" \
 "../source/ti_fee_util.c" \
 "../source/ti_fee_writeAsync.c" \
-"../source/ti_fee_writeSync.c" \
-"../source/wheel_speed.c" 
+"../source/ti_fee_writeSync.c" 
 
 ASM_SRCS__QUOTED += \
 "../source/dabort.asm" \

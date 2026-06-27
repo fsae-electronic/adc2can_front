@@ -7,7 +7,15 @@
 #include "sci.h"
 #include "rti.h"
 
-#include "wheel_speed.h"
+#include "sensors.h"
+
+#define CLOCK_RTI_HZ 10000000 
+#define ADC_HZ 500
+#define ADC_TICKS (CLOCK_RTI_HZ / ADC_HZ)
+
+#define PLOT_HZ 50
+#define PLOT_TICKS (CLOCK_RTI_HZ / PLOT_HZ)
+
 
 char sciBuffer[64];
 
@@ -18,26 +26,40 @@ int main(void)
     sciInit();
     sciSetBaudrate(sciREG, 115200);
 
-    init_wheel();
+    init_sensors();
+
+
+    rtiSetPeriod(rtiCOMPARE2, PLOT_TICKS);
+    rtiEnableNotification(rtiNOTIFICATION_COMPARE2);
+    
+
+
+    rtiStartCounter(rtiCOUNTER_BLOCK1);
+
 
 
 
     while(1)
     {
-        if(left_wheel.new_value)
-        {
-            uint32_t rpm = get_wheel_rpm(WHEEL_SPEED_FRONT_LEFT);
-            uint16_t len = sprintf((char *)sciBuffer, "Left Wheel RPM: %lu\n", rpm);
-            sciSend(sciREG, len, sciBuffer);
-        }
-        if(right_wheel.new_value)
-        {
-            uint32_t rpm = get_wheel_rpm(WHEEL_SPEED_FRONT_RIGHT);
-            uint16_t len = sprintf((char *)sciBuffer, "Right Wheel RPM: %lu\n", rpm);
-            sciSend(sciREG, len, sciBuffer);
-        }
+        run_sensors();
     }
 
     return 0;
 }
 
+void rtiNotification(uint32 notification)
+{
+    if (notification == rtiNOTIFICATION_COMPARE0)
+    {
+    }
+    if (notification == rtiNOTIFICATION_COMPARE1)
+    {
+
+    }
+    if (notification == rtiNOTIFICATION_COMPARE2)
+    {
+        convert_data();
+        send_data_to_serialplot();
+    }
+    
+}
