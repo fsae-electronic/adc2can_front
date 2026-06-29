@@ -109,6 +109,7 @@ void dmaGroupANotification(dmaInterrupt_t inttype, uint32 channel)
 {
     if (inttype == FTC && channel == DMA_CH0)
     {
-        conversion_complete = true; /* Indicar que la transferencia se completó */
+        conversion_complete = true; // Indicar que la conversión está completa
+        process_adc_data();
     }
 }
