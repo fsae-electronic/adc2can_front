@@ -7,14 +7,14 @@
 
 typedef enum
 {
-    ADC1 = 0,
+    ADC0 = 0,
+    ADC1,
     ADC2,
     ADC3,
     ADC4,
     ADC5,
     ADC6,
     ADC7,
-    ADC8,
     ADC_NUM_CHANNELS
 } adc_id_t;
 
