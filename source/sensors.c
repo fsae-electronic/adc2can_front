@@ -13,7 +13,7 @@ uint8_t calibration_cmd_id = CAL_CMD_NONE;
 struct EEPROM_data{
     union
     {
-        uint8_t raw[12];
+        uint8_t raw[14];
         struct
         {
             uint16_t magic;

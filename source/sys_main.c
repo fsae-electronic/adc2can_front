@@ -92,7 +92,7 @@ int main(void)
 
     canInit();
 
-    initmira_sensors();
+    init_sensors();
 
 
     rtiSetPeriod(rtiCOMPARE2, DATA_PROCESS_TICKS);
