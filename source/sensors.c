@@ -61,10 +61,6 @@ bool load_e_from_eeprom()
     struct EEPROM_data e;
 
     //Read the data from EEPROM
-    while(TI_Fee_GetStatus(0) != IDLE)
-    {
-        TI_Fee_MainFunction();
-    }
     TI_Fee_ReadSync(1, 0, e.raw, sizeof(struct EEPROM_data));
 
     if(e.values.magic != EEPROM_MAGIC)
@@ -87,10 +83,6 @@ bool load_e_from_eeprom()
 
 void save_e_to_eeprom(void)
 {
-    while(TI_Fee_GetStatus(0) != IDLE)
-    {
-        TI_Fee_MainFunction();
-    }
     struct EEPROM_data e;
     e.values.magic = EEPROM_MAGIC;
 
@@ -106,10 +98,6 @@ void save_e_to_eeprom(void)
 
     TI_Fee_WriteAsync(1, e.raw);
 
-    while(TI_Fee_GetStatus(0) != IDLE)
-    {
-        TI_Fee_MainFunction();
-    }
 }
 
 void init_sensors(void)
@@ -189,9 +177,9 @@ void convert_data(void)
 
     // TPS Conversion
     // TPS1
-    if(sensors_data.tps_data.tps1_raw_value > sensors_data.tps_data.tps1_min_value)
+    if(sensors_data.tps_data.tps1_raw_value < sensors_data.tps_data.tps1_min_value)
         sensors_data.tps_data.tps1_value = 0;
-    else if(sensors_data.tps_data.tps1_raw_value < sensors_data.tps_data.tps1_max_value)
+    else if(sensors_data.tps_data.tps1_raw_value > sensors_data.tps_data.tps1_max_value)
         sensors_data.tps_data.tps1_value = 100;
     else
         sensors_data.tps_data.tps1_value = (uint16_t)(((float)(sensors_data.tps_data.tps1_min_value - sensors_data.tps_data.tps1_raw_value)

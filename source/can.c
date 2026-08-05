@@ -1261,7 +1261,108 @@ void can1GetConfigValue(can_config_reg_t *config_reg, config_value_type_t type)
     }
 }
 
+/* USER CODE BEGIN (40) */
+/* USER CODE END */
+/** @fn void can1HighLevelInterrupt(void)
+*   @brief CAN1 Level 0 Interrupt Handler
+*/
+#pragma CODE_STATE(can1HighLevelInterrupt, 32)
+#pragma INTERRUPT(can1HighLevelInterrupt, IRQ)
 
+/* SourceId : CAN_SourceId_020 */
+/* DesignId : CAN_DesignId_018 */
+/* Requirements : HL_SR221, HL_SR222, HL_SR223 */
+void can1HighLevelInterrupt(void)
+{
+    uint32 value = canREG1->INT;
+	uint32 ES_value;
+
+/* USER CODE BEGIN (41) */
+/* USER CODE END */
+
+    if (value == 0x8000U)
+    {
+        /* Read Error and Status Register*/
+        ES_value = canREG1->ES;
+        
+        /* Check for Error (PES, Boff, EWarn & EPass) captured */
+        if((ES_value & 0x1E0U) != 0U)
+        {
+            canErrorNotification(canREG1, ES_value & 0x1E0U);
+        }
+        else
+        {   
+            /* Call General Can notification incase of RxOK, TxOK, PDA, WakeupPnd Interrupt */
+            canStatusChangeNotification(canREG1, ES_value & 0x618U);
+        }
+    }
+    else
+    {
+        /** - Setup IF1 for clear pending interrupt flag */
+        /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Potentially infinite loop found - Hardware Status check for execution sequence" */
+        while ((canREG1->IF1STAT & 0x80U) ==0x80U)
+        { 
+        } /* Wait */
+
+        canREG1->IF1CMD = 0x08U;
+		/*SAFETYMCUSW 93 S MR: 6.1,6.2,10.1,10.2,10.3,10.4 <APPROVED> "LDRA Tool issue" */
+        canREG1->IF1NO  = (uint8) value;
+        
+        /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Potentially infinite loop found - Hardware Status check for execution sequence" */
+        while ((canREG1->IF1STAT & 0x80U) ==0x80U)
+        { 
+        } /* Wait */
+        canREG1->IF1CMD = 0x87U;
+
+        canMessageNotification(canREG1, value);
+    }
+	
+/* USER CODE BEGIN (42) */
+/* USER CODE END */
+
+}
+
+/* USER CODE BEGIN (43) */
+/* USER CODE END */
+
+/** @fn void can1LowLevelInterrupt(void)
+*   @brief CAN1 Level 1 Interrupt Handler
+*/
+#pragma CODE_STATE(can1LowLevelInterrupt, 32)
+#pragma INTERRUPT(can1LowLevelInterrupt, IRQ)
+
+/* SourceId : CAN_SourceId_021 */
+/* DesignId : CAN_DesignId_019 */
+/* Requirements : HL_SR221, HL_SR223 */
+void can1LowLevelInterrupt(void)
+{
+    uint32 messageBox = canREG1->INT >> 16U;
+
+/* USER CODE BEGIN (44) */
+/* USER CODE END */
+
+    /** - Setup IF1 for clear pending interrupt flag */
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Potentially infinite loop found - Hardware Status check for execution sequence" */
+    while ((canREG1->IF1STAT & 0x80U) ==0x80U)
+    { 
+    } /* Wait */
+
+    canREG1->IF1CMD = 0x08U;
+    /*SAFETYMCUSW 93 S MR: 6.1,6.2,10.1,10.2,10.3,10.4 <APPROVED> "LDRA Tool issue" */
+    canREG1->IF1NO  = (uint8) messageBox;
+    
+    /*SAFETYMCUSW 28 D MR:NA <APPROVED> "Potentially infinite loop found - Hardware Status check for execution sequence" */
+    while ((canREG1->IF1STAT & 0x80U) ==0x80U)
+    { 
+    } /* Wait */
+    canREG1->IF1CMD = 0x87U;
+
+    canMessageNotification(canREG1, messageBox);
+
+/* USER CODE BEGIN (45) */
+/* USER CODE END */
+
+}
 
 
 

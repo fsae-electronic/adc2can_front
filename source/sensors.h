@@ -2,10 +2,10 @@
 #include "freq_measure.h"
 
 
-#define TPS1_CH ADC1
-#define TPS2_CH ADC2
-#define FRONT_BRAKE_CH ADC3
-#define DIRECTION_CH ADC4
+#define TPS1_CH ADC2
+#define TPS2_CH ADC6
+#define FRONT_BRAKE_CH ADC5
+#define DIRECTION_CH ADC0
 
 #define FRONT_LEFT_WHEEL_CH FREQ_MEASURE_CH1
 #define FRONT_RIGHT_WHEEL_CH FREQ_MEASURE_CH2
