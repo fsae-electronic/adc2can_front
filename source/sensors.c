@@ -32,6 +32,59 @@ struct EEPROM_data{
 
 static const uint16_t EEPROM_MAGIC = 0xAAAA;
 
+/* EMA low-pass filter: alpha = 1/2^ADC_FILTER_SHIFT. Higher shift = smoother but slower response */
+#define ADC_FILTER_SHIFT 3u
+
+static uint16_t adc_filtered_value[ADC_NUM_CHANNELS];
+static bool adc_filter_initialized[ADC_NUM_CHANNELS];
+
+static uint16_t filter_adc_channel(adc_id_t ch)
+{
+    uint16_t raw = adc_data[ch].adc_value;
+
+    if (!adc_filter_initialized[ch])
+    {
+        adc_filtered_value[ch] = raw;
+        adc_filter_initialized[ch] = true;
+    }
+    else
+    {
+        adc_filtered_value[ch] = (uint16_t)(adc_filtered_value[ch] +
+            (((int32_t)raw - (int32_t)adc_filtered_value[ch]) >> ADC_FILTER_SHIFT));
+    }
+
+    return adc_filtered_value[ch];
+}
+
+/* EMA low-pass filter for wheel speed: smooths phonic wheel glitches (e.g. spurious zero readings) */
+#define RPM_FILTER_SHIFT 2u
+
+typedef enum
+{
+    WHEEL_SPEED_LEFT = 0,
+    WHEEL_SPEED_RIGHT,
+    WHEEL_SPEED_NUM_CHANNELS
+} wheel_speed_ch_t;
+
+static uint16_t rpm_filtered_value[WHEEL_SPEED_NUM_CHANNELS];
+static bool rpm_filter_initialized[WHEEL_SPEED_NUM_CHANNELS];
+
+static uint16_t filter_rpm_channel(wheel_speed_ch_t ch, uint16_t raw_rpm)
+{
+    if (!rpm_filter_initialized[ch])
+    {
+        rpm_filtered_value[ch] = raw_rpm;
+        rpm_filter_initialized[ch] = true;
+    }
+    else
+    {
+        rpm_filtered_value[ch] = (uint16_t)(rpm_filtered_value[ch] +
+            (((int32_t)raw_rpm - (int32_t)rpm_filtered_value[ch]) >> RPM_FILTER_SHIFT));
+    }
+
+    return rpm_filtered_value[ch];
+}
+
 static uint16_t period_us_to_rpm(float period_us)
 {
     float rpm;
@@ -60,10 +113,13 @@ bool load_e_from_eeprom()
 {
     struct EEPROM_data e;
 
-    //Read the data from EEPROM
+    while(TI_Fee_GetStatus(0) != IDLE)
+    {
+        TI_Fee_MainFunction();
+    }
     TI_Fee_ReadSync(1, 0, e.raw, sizeof(struct EEPROM_data));
 
-    if(e.values.magic != EEPROM_MAGIC)
+    if (e.values.magic != EEPROM_MAGIC) 
     {
         return false;
     }
@@ -83,6 +139,11 @@ bool load_e_from_eeprom()
 
 void save_e_to_eeprom(void)
 {
+    while(TI_Fee_GetStatus(0) != IDLE)
+    {
+        TI_Fee_MainFunction();
+    }
+
     struct EEPROM_data e;
     e.values.magic = EEPROM_MAGIC;
 
@@ -97,11 +158,22 @@ void save_e_to_eeprom(void)
     e.values.calibration_direction_value = sensors_data.direction_data.calibration_direction_value;
 
     TI_Fee_WriteAsync(1, e.raw);
+    while(TI_Fee_GetStatus(0) != IDLE)
+    {
+        TI_Fee_MainFunction();
+    }
 
 }
 
 void init_sensors(void)
 {
+
+    TI_Fee_Init();
+    while(TI_Fee_GetStatus(0) != IDLE)
+    {
+        TI_Fee_MainFunction();
+    }
+
     sensors_data.tps_data.tps1_value = 0;
     sensors_data.tps_data.tps2_value = 0;
 
@@ -153,7 +225,7 @@ void send_data_to_can(void)
     tps_data[1] = (uint8_t)((sensors_data.tps_data.tps1_value >> 8) & 0xFF);
     tps_data[2] = (uint8_t)(sensors_data.tps_data.tps2_value & 0xFF);
     tps_data[3] = (uint8_t)((sensors_data.tps_data.tps2_value >> 8) & 0xFF);
-    canTransmit(canREG1, canMESSAGE_BOX2,(uint8_t*)&sensors_data);
+    canTransmit(canREG1, canMESSAGE_BOX2, tps_data);
 
     uint8_t front_data[8];
     front_data[0] = (uint8_t)(sensors_data.left_wheel_speed_data.wheel_rpm & 0xFF);
@@ -169,21 +241,21 @@ void send_data_to_can(void)
 
 void convert_data(void)
 {
-    //ADC raw value
-    sensors_data.tps_data.tps1_raw_value = adc_data[TPS1_CH].adc_value;
-    sensors_data.tps_data.tps2_raw_value = adc_data[TPS2_CH].adc_value;
-    sensors_data.front_brake_data.front_brake_raw_value = adc_data[FRONT_BRAKE_CH].adc_value;
-    sensors_data.direction_data.direction_raw_value = adc_data[DIRECTION_CH].adc_value;
+    //ADC raw value (filtered to reduce measurement noise)
+    sensors_data.tps_data.tps1_raw_value = filter_adc_channel(TPS1_CH);
+    sensors_data.tps_data.tps2_raw_value = filter_adc_channel(TPS2_CH);
+    sensors_data.front_brake_data.front_brake_raw_value = filter_adc_channel(FRONT_BRAKE_CH);
+    sensors_data.direction_data.direction_raw_value = filter_adc_channel(DIRECTION_CH);
 
     // TPS Conversion
     // TPS1
     if(sensors_data.tps_data.tps1_raw_value < sensors_data.tps_data.tps1_min_value)
-        sensors_data.tps_data.tps1_value = 0;
-    else if(sensors_data.tps_data.tps1_raw_value > sensors_data.tps_data.tps1_max_value)
         sensors_data.tps_data.tps1_value = 100;
+    else if(sensors_data.tps_data.tps1_raw_value > sensors_data.tps_data.tps1_max_value)
+        sensors_data.tps_data.tps1_value = 0;
     else
-        sensors_data.tps_data.tps1_value = (uint16_t)(((float)(sensors_data.tps_data.tps1_min_value - sensors_data.tps_data.tps1_raw_value)
-                                                     / (float)(sensors_data.tps_data.tps1_min_value - sensors_data.tps_data.tps1_max_value)) * 100.0f);
+        sensors_data.tps_data.tps1_value = (uint16_t)(((float)(sensors_data.tps_data.tps1_max_value - sensors_data.tps_data.tps1_raw_value)
+                                                     / (float)(sensors_data.tps_data.tps1_max_value - sensors_data.tps_data.tps1_min_value)) * 100.0f);
 
     // TPS2
     if(sensors_data.tps_data.tps2_raw_value < sensors_data.tps_data.tps2_min_value)
@@ -201,13 +273,13 @@ void convert_data(void)
         sensors_data.front_brake_data.front_brake_value = 0;
     else
         sensors_data.front_brake_data.front_brake_value =
-            (uint16_t)(400.0f * ((((float)sensors_data.front_brake_data.front_brake_raw_value / 4095.0f) * 5.0f) - 0.5f));
+            (uint16_t)(400.0f * ((((float)sensors_data.front_brake_data.front_brake_raw_value/ 4095.0f) * 5.0f) - 0.5f));
     // Freq raw value
     sensors_data.left_wheel_speed_data.period_us = get_period_us_measure(FRONT_LEFT_WHEEL_CH);
     sensors_data.right_wheel_speed_data.period_us = get_period_us_measure(FRONT_RIGHT_WHEEL_CH);
 
-    sensors_data.left_wheel_speed_data.wheel_rpm = period_us_to_rpm(sensors_data.left_wheel_speed_data.period_us);
-    sensors_data.right_wheel_speed_data.wheel_rpm = period_us_to_rpm(sensors_data.right_wheel_speed_data.period_us);
+    sensors_data.left_wheel_speed_data.wheel_rpm = filter_rpm_channel(WHEEL_SPEED_LEFT, period_us_to_rpm(sensors_data.left_wheel_speed_data.period_us));
+    sensors_data.right_wheel_speed_data.wheel_rpm = filter_rpm_channel(WHEEL_SPEED_RIGHT, period_us_to_rpm(sensors_data.right_wheel_speed_data.period_us));
 
     // Direction Conversion
     sensors_data.direction_data.direction_value = (uint16_t)(((float)(sensors_data.direction_data.direction_raw_value - sensors_data.direction_data.calibration_direction_value)
@@ -224,12 +296,12 @@ void process_calibration_command(void)
     switch(calibration_cmd_id)
     {
         case CAL_CMD_TPS_0:
-            sensors_data.tps_data.tps1_min_value = sensors_data.tps_data.tps1_raw_value;
+            sensors_data.tps_data.tps1_max_value = sensors_data.tps_data.tps1_raw_value;
             sensors_data.tps_data.tps2_min_value = sensors_data.tps_data.tps2_raw_value;
             sensors_data.front_brake_data.calibration_brake_value = sensors_data.front_brake_data.front_brake_raw_value;
             break;
         case CAL_CMD_TPS_100:
-            sensors_data.tps_data.tps1_max_value = sensors_data.tps_data.tps1_raw_value;
+            sensors_data.tps_data.tps1_min_value = sensors_data.tps_data.tps1_raw_value;
             sensors_data.tps_data.tps2_max_value = sensors_data.tps_data.tps2_raw_value;
             break;
         case CAL_CMD_CENTER_STEER:
