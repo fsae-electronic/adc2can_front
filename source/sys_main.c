@@ -61,8 +61,7 @@
 
 #define CLOCK_RTI_HZ 10000000 
 
-// CAN data sending frequency over CAN bus
-#define DATA_PROCESS_HZ 150
+// Data processing frequency (DATA_PROCESS_HZ defined in sensors.h)
 #define DATA_PROCESS_TICKS (CLOCK_RTI_HZ / DATA_PROCESS_HZ)
 
 // Serial data sending frequency over SCI
@@ -93,6 +92,9 @@ int main(void)
     canInit();
 
     init_sensors();
+
+    // Delay to allow sensors to stabilize
+    for(volatile int i = 0; i < 10000000; i++); // Simple delay loop
 
 
     rtiSetPeriod(rtiCOMPARE2, DATA_PROCESS_TICKS);

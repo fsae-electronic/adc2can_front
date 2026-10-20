@@ -85,6 +85,104 @@ static uint16_t filter_rpm_channel(wheel_speed_ch_t ch, uint16_t raw_rpm)
     return rpm_filtered_value[ch];
 }
 
+/* Implausibility detection: a fault is confirmed after IMPLAUSIBILITY_CYCLES consecutive cycles.
+ * 0x401 is sent once on the rising edge of the confirmation and re-armed when the condition clears */
+typedef struct
+{
+    uint16_t counter;
+    bool confirmed;
+} implausibility_t;
+
+static implausibility_t tps_implausibility;
+static implausibility_t brake_implausibility;
+static bool implausibility_msg_pending = false;
+
+static void update_implausibility(implausibility_t *fault, bool condition)
+{
+    if (!condition)
+    {
+        fault->counter = 0;
+        fault->confirmed = false;
+        return;
+    }
+
+    if (fault->counter < IMPLAUSIBILITY_CYCLES)
+    {
+        fault->counter++;
+    }
+
+    if (fault->counter >= IMPLAUSIBILITY_CYCLES && !fault->confirmed)
+    {
+        fault->confirmed = true;
+        implausibility_msg_pending = true;
+    }
+}
+
+static bool raw_out_of_range(uint16_t raw, uint16_t min, uint16_t max)
+{
+    return (raw < min) || (raw > max);
+}
+
+// Range derived from the TPS calibration, widened by TPS_RAW_MARGIN_PCT of the calibrated span
+static bool tps_raw_out_of_range(uint16_t raw, uint16_t cal_min, uint16_t cal_max)
+{
+    if (cal_max <= cal_min)
+    {
+        return true; // Not calibrated / invalid calibration
+    }
+
+    int32_t margin = ((int32_t)(cal_max - cal_min) * TPS_RAW_MARGIN_PCT) / 100;
+
+    return ((int32_t)raw < (int32_t)cal_min - margin) || ((int32_t)raw > (int32_t)cal_max + margin);
+}
+
+static void check_implausibility(void)
+{
+    int32_t tps_diff = (int32_t)sensors_data.tps_data.tps1_value - (int32_t)sensors_data.tps_data.tps2_value;
+    if (tps_diff < 0)
+    {
+        tps_diff = -tps_diff;
+    }
+
+    bool tps_fault = (tps_diff > TPS_IMPLAUSIBILITY_DIFF)
+                  || tps_raw_out_of_range(sensors_data.tps_data.tps1_raw_value, sensors_data.tps_data.tps1_min_value, sensors_data.tps_data.tps1_max_value)
+                  || tps_raw_out_of_range(sensors_data.tps_data.tps2_raw_value, sensors_data.tps_data.tps2_min_value, sensors_data.tps_data.tps2_max_value);
+
+    uint16_t brake_cal = sensors_data.front_brake_data.calibration_brake_value;
+    uint16_t brake_raw_min = (brake_cal == 0U) ? BRAKE_RAW_MIN_UNCALIBRATED
+                                               : (uint16_t)(brake_cal - (brake_cal * BRAKE_RAW_MIN_MARGIN_PCT) / 100U);
+
+    bool brake_fault = raw_out_of_range(sensors_data.front_brake_data.front_brake_raw_value, brake_raw_min, BRAKE_RAW_MAX);
+
+    update_implausibility(&tps_implausibility, tps_fault);
+    update_implausibility(&brake_implausibility, brake_fault);
+}
+
+static void send_implausibility_to_can(void)
+{
+    if (!implausibility_msg_pending)
+    {
+        return;
+    }
+
+    // Fault cleared before it could be sent: nothing to report
+    if (!tps_implausibility.confirmed && !brake_implausibility.confirmed)
+    {
+        implausibility_msg_pending = false;
+        return;
+    }
+
+    uint8_t implausibility_data[8] = {0};
+    implausibility_data[0] = tps_implausibility.confirmed ? 1U : 0U;
+    implausibility_data[1] = brake_implausibility.confirmed ? 1U : 0U;
+
+    // Retry on the next cycle if the mailbox still has a pending transmission
+    if (canTransmit(canREG1, canMESSAGE_BOX4, implausibility_data) != 0U)
+    {
+        implausibility_msg_pending = false;
+    }
+}
+
 static uint16_t period_us_to_rpm(float period_us)
 {
     float rpm;
@@ -267,13 +365,13 @@ void convert_data(void)
                                                      / (float)(sensors_data.tps_data.tps2_max_value - sensors_data.tps_data.tps2_min_value)) * 100.0f);       
                                                      
     // Brake Conversion
-	// P [PSI] = 400*(V - 0.5V)
+	// P [PSI] = 400*(V - V0), where V0 is the voltage measured at 0 PSI (calibration_brake_value)
 	// V = raw_value/4095 * 5.0
     if(sensors_data.front_brake_data.front_brake_raw_value < sensors_data.front_brake_data.calibration_brake_value)
         sensors_data.front_brake_data.front_brake_value = 0;
     else
         sensors_data.front_brake_data.front_brake_value =
-            (uint16_t)(400.0f * ((((float)sensors_data.front_brake_data.front_brake_raw_value/ 4095.0f) * 5.0f) - 0.5f));
+            (uint16_t)(400.0f * (((float)sensors_data.front_brake_data.front_brake_raw_value - (float)sensors_data.front_brake_data.calibration_brake_value) / 4095.0f * 5.0f));
     // Freq raw value
     sensors_data.left_wheel_speed_data.period_us = get_period_us_measure(FRONT_LEFT_WHEEL_CH);
     sensors_data.right_wheel_speed_data.period_us = get_period_us_measure(FRONT_RIGHT_WHEEL_CH);
@@ -284,6 +382,10 @@ void convert_data(void)
     // Direction Conversion
     sensors_data.direction_data.direction_value = (uint16_t)(((float)(sensors_data.direction_data.direction_raw_value - sensors_data.direction_data.calibration_direction_value)
                                                      / (float)(4095.0f)) * STEERING_MAX_ANGLE_DEG) + 180;
+
+    // Implausibility detection (RAW values checked before the 0-100 clamp)
+    check_implausibility();
+    send_implausibility_to_can();
 }
 
 void process_calibration_command(void)
@@ -309,7 +411,11 @@ void process_calibration_command(void)
             break;
 
         default:
-            break;
+            // Not a calibration for this board (e.g. drive/traction/mode/telemetry cmds 7-0xE
+            // for the main ECU): drop it without touching the FEE. Writing the EEPROM here
+            // blocks the RTI ISR and can delay 0x501/0x502 past the main ECU CAN timeout.
+            calibration_cmd_id = CAL_CMD_NONE;
+            return;
     }
 
     save_e_to_eeprom();
