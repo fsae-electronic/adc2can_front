@@ -381,7 +381,7 @@ void convert_data(void)
 
     // Direction Conversion
     sensors_data.direction_data.direction_value = (uint16_t)(((float)(sensors_data.direction_data.direction_raw_value - sensors_data.direction_data.calibration_direction_value)
-                                                     / (float)(4095.0f)) * STEERING_MAX_ANGLE_DEG) + 180;
+                                                     / (float)(4095.0f)) * STEERING_MAX_ANGLE_DEG);
 
     // Implausibility detection (RAW values checked before the 0-100 clamp)
     check_implausibility();

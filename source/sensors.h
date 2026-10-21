@@ -11,7 +11,7 @@
 #define FRONT_RIGHT_WHEEL_CH FREQ_MEASURE_CH2
 
 #define THEETH_PER_WHEEL 20.0f
-#define STEERING_MAX_ANGLE_DEG 3600.0f
+#define STEERING_MAX_ANGLE_DEG 1800.0f
 
 // convert_data() execution frequency (RTI compare2)
 #define DATA_PROCESS_HZ 150
@@ -25,11 +25,11 @@
 
 // TPS normal RAW range = calibrated [min, max] widened by this % of the calibrated span on each side.
 // Outside this range = open circuit / short circuit
-#define TPS_RAW_MARGIN_PCT 25
+#define TPS_RAW_MARGIN_PCT 50
 
 // Brake normal RAW range (12 bits over 5 V). Outside this range = open circuit / short circuit
 // Min = calibration_brake_value (0 PSI) minus this % of the calibration value
-#define BRAKE_RAW_MIN_MARGIN_PCT 25
+#define BRAKE_RAW_MIN_MARGIN_PCT 50
 // Fallback min when the brake is not calibrated (0.5 V -> 410)
 #define BRAKE_RAW_MIN_UNCALIBRATED 410
 // Max = 4.5 V -> 3686
