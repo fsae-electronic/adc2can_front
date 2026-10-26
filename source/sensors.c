@@ -123,19 +123,6 @@ static bool raw_out_of_range(uint16_t raw, uint16_t min, uint16_t max)
     return (raw < min) || (raw > max);
 }
 
-// Range derived from the TPS calibration, widened by TPS_RAW_MARGIN_PCT of the calibrated span
-static bool tps_raw_out_of_range(uint16_t raw, uint16_t cal_min, uint16_t cal_max)
-{
-    if (cal_max <= cal_min)
-    {
-        return true; // Not calibrated / invalid calibration
-    }
-
-    int32_t margin = ((int32_t)(cal_max - cal_min) * TPS_RAW_MARGIN_PCT) / 100;
-
-    return ((int32_t)raw < (int32_t)cal_min - margin) || ((int32_t)raw > (int32_t)cal_max + margin);
-}
-
 static void check_implausibility(void)
 {
     int32_t tps_diff = (int32_t)sensors_data.tps_data.tps1_value - (int32_t)sensors_data.tps_data.tps2_value;
@@ -145,14 +132,10 @@ static void check_implausibility(void)
     }
 
     bool tps_fault = (tps_diff > TPS_IMPLAUSIBILITY_DIFF)
-                  || tps_raw_out_of_range(sensors_data.tps_data.tps1_raw_value, sensors_data.tps_data.tps1_min_value, sensors_data.tps_data.tps1_max_value)
-                  || tps_raw_out_of_range(sensors_data.tps_data.tps2_raw_value, sensors_data.tps_data.tps2_min_value, sensors_data.tps_data.tps2_max_value);
+                  || raw_out_of_range(sensors_data.tps_data.tps1_raw_value, SENSOR_RAW_MIN, SENSOR_RAW_MAX)
+                  || raw_out_of_range(sensors_data.tps_data.tps2_raw_value, SENSOR_RAW_MIN, SENSOR_RAW_MAX);
 
-    uint16_t brake_cal = sensors_data.front_brake_data.calibration_brake_value;
-    uint16_t brake_raw_min = (brake_cal == 0U) ? BRAKE_RAW_MIN_UNCALIBRATED
-                                               : (uint16_t)(brake_cal - (brake_cal * BRAKE_RAW_MIN_MARGIN_PCT) / 100U);
-
-    bool brake_fault = raw_out_of_range(sensors_data.front_brake_data.front_brake_raw_value, brake_raw_min, BRAKE_RAW_MAX);
+    bool brake_fault = raw_out_of_range(sensors_data.front_brake_data.front_brake_raw_value, SENSOR_RAW_MIN, SENSOR_RAW_MAX);
 
     update_implausibility(&tps_implausibility, tps_fault);
     update_implausibility(&brake_implausibility, brake_fault);

@@ -93,16 +93,14 @@ Se evalua en cada ciclo de `convert_data()` (`DATA_PROCESS_HZ = 150 Hz`, ~6.7 ms
 | Falla | Byte | Condicion (tiene que persistir > 100 ms) | Reglamento |
 | --- | --- | --- | --- |
 | TPS | `B0` | `abs(tps1_value - tps2_value) > 10 %` | T.4.2 (APPS) |
-| TPS | `B0` | `tps1_raw_value` o `tps2_raw_value` fuera de su rango calibrado +/- 25 % del recorrido (circuito abierto / corto) | T.4.2 (APPS) |
-| Freno delantero | `B1` | `front_brake_raw_value` < calibracion - 25 % o > 4.5 V (circuito abierto / corto) | T.4.3.3/4 (BSE) |
+| TPS | `B0` | `tps1_raw_value` o `tps2_raw_value` < 0.4 V o > 4.6 V (circuito abierto / corto) | T.4.2 (APPS) |
+| Freno delantero | `B1` | `front_brake_raw_value` < 0.4 V o > 4.6 V (circuito abierto / corto) | T.4.3.3/4 (BSE) |
 
 - Los chequeos de rango se hacen sobre el valor **RAW** del ADC (filtrado), antes del clamp de `convert_data()`. El TPS en % esta clampeado a 0-100 y la presion de freno se clampea a 0 PSI por debajo de la calibracion, asi que un circuito abierto no se puede detectar desde los valores convertidos.
 - Deteccion por flanco: el `0x401` se manda una sola vez cuando la falla se confirma, no un frame por ciclo mientras dure. Cuando la condicion desaparece la deteccion se re-arma y se vuelve a mandar recien si la falla aparece de nuevo.
 - Si el mailbox 4 todavia tiene una transmision pendiente, se reintenta en el ciclo siguiente.
 - `B0`/`B1` reflejan las fallas confirmadas al momento de mandar el frame.
-- Rango RAW del TPS: se arma con los valores de calibracion (`tpsX_min_value`, `tpsX_max_value`) ensanchados un `TPS_RAW_MARGIN_PCT` del recorrido calibrado de cada lado: `[min - 25 % * (max - min), max + 25 % * (max - min)]`. Ejemplo: min = 800, max = 3200 -> rango normal 200 - 3800.
-- Rango RAW del freno: el minimo sale de `calibration_brake_value` (RAW a 0 PSI, se guarda con el cmd 1) menos un `BRAKE_RAW_MIN_MARGIN_PCT` de ese valor; el maximo queda fijo en 4.5 V. Ejemplo: calibracion = 500 -> rango normal 375 - 3686. Si el freno no esta calibrado (`calibration_brake_value = 0`) el minimo vuelve a 0.5 V (410).
-- Con el TPS sin calibrar (min/max en 0) o con una calibracion invalida (`max <= min`) se reporta implausibility de TPS.
+- Rango RAW de falla fijo para TPS1, TPS2 y freno: 0.4 V (`SENSOR_RAW_MIN = 328`) a 4.6 V (`SENSOR_RAW_MAX = 3767`), ADC 12 bits sobre 5 V. No depende de la calibracion; las calibraciones (cmd `1` y `2`) solo se usan para convertir a % y PSI.
 
 Umbrales (`#define` en [source/sensors.h](source/sensors.h)):
 
@@ -111,10 +109,8 @@ Umbrales (`#define` en [source/sensors.h](source/sensors.h)):
 | `IMPLAUSIBILITY_TIME_MS` | `100` | Persistencia minima de la falla |
 | `IMPLAUSIBILITY_CYCLES` | `15` | Persistencia en ciclos de `convert_data()` (calculado) |
 | `TPS_IMPLAUSIBILITY_DIFF` | `10` | Desvio maximo TPS1 vs TPS2 [%] |
-| `TPS_RAW_MARGIN_PCT` | `25` | Margen sobre el rango calibrado del TPS [% del recorrido `max - min`] |
-| `BRAKE_RAW_MIN_MARGIN_PCT` | `25` | Margen por debajo de la calibracion del freno [% de `calibration_brake_value`] |
-| `BRAKE_RAW_MIN_UNCALIBRATED` | `410` | Minimo RAW del freno sin calibrar (0.5 V) |
-| `BRAKE_RAW_MAX` | `3686` | Maximo RAW del freno (4.5 V) |
+| `SENSOR_RAW_MIN` | `328` | Minimo RAW de TPS y freno (0.4 V) |
+| `SENSOR_RAW_MAX` | `3767` | Maximo RAW de TPS y freno (4.6 V) |
 
 ## Flujo de ejecucion
 
