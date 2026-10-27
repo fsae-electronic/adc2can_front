@@ -59,6 +59,8 @@
 
 #include "sensors.h"
 
+#include <stdbool.h>
+
 #define CLOCK_RTI_HZ 10000000 
 
 // Data processing frequency (DATA_PROCESS_HZ defined in sensors.h)
@@ -67,6 +69,18 @@
 // Serial data sending frequency over SCI
 #define DATA_SEND_HZ 100
 #define DATA_SEND_TICKS (CLOCK_RTI_HZ / DATA_SEND_HZ)
+
+// Digital watchdog (RTI DWD). Expiration = (preload + 1) * 2^13 / RTICLK, with
+// RTICLK = VCLK = 20 MHz on this board: 243 -> ~100 ms (4095 max). The main loop
+// refreshes it only after both RTI jobs (compare 2 process, compare 3 send) ran
+// since the last refresh, so a hung interrupt, a busy-wait or a stopped RTI resets
+// the board. Once enabled it can't be stopped until the next reset: set
+// WATCHDOG_ENABLE to 0 when debugging with breakpoints if the halt resets it.
+#define WATCHDOG_ENABLE 1
+#define WATCHDOG_DWD_PRELOAD 243U
+
+static volatile bool wd_process_alive = false;
+static volatile bool wd_send_alive = false;
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -106,9 +120,22 @@ int main(void)
 
 
     rtiStartCounter(rtiCOUNTER_BLOCK1);
+
+#if WATCHDOG_ENABLE
+    dwwdInit(Generate_Reset, WATCHDOG_DWD_PRELOAD, Size_100_Percent);
+    dwdCounterEnable();
+#endif
+
     while(1)
     {
-        // Main loop can be used for other tasks if needed
+        if (wd_process_alive && wd_send_alive)
+        {
+            wd_process_alive = false;
+            wd_send_alive = false;
+#if WATCHDOG_ENABLE
+            dwdReset();
+#endif
+        }
     }
 /* USER CODE END */
 
@@ -123,11 +150,13 @@ void rtiNotification(uint32 notification)
     {
         convert_data();
         process_calibration_command();
+        wd_process_alive = true;
     }
     else if (notification == rtiNOTIFICATION_COMPARE3)
     {
         send_data_to_serial();
         send_data_to_can();
+        wd_send_alive = true;
     }   
 }
 

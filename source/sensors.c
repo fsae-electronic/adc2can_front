@@ -3,6 +3,7 @@
 #include "ti_fee.h"
 #include "sci.h"
 #include "can.h"
+#include "rti.h"
 
 sensors_data_t sensors_data;
 
@@ -197,6 +198,7 @@ bool load_e_from_eeprom()
     while(TI_Fee_GetStatus(0) != IDLE)
     {
         TI_Fee_MainFunction();
+        dwdReset(); // flash erase/write can outlast the watchdog (sys_main.c)
     }
     TI_Fee_ReadSync(1, 0, e.raw, sizeof(struct EEPROM_data));
 
@@ -223,6 +225,7 @@ void save_e_to_eeprom(void)
     while(TI_Fee_GetStatus(0) != IDLE)
     {
         TI_Fee_MainFunction();
+        dwdReset(); // flash erase/write can outlast the watchdog (sys_main.c)
     }
 
     struct EEPROM_data e;
@@ -242,6 +245,7 @@ void save_e_to_eeprom(void)
     while(TI_Fee_GetStatus(0) != IDLE)
     {
         TI_Fee_MainFunction();
+        dwdReset(); // flash erase/write can outlast the watchdog (sys_main.c)
     }
 
 }
@@ -253,6 +257,7 @@ void init_sensors(void)
     while(TI_Fee_GetStatus(0) != IDLE)
     {
         TI_Fee_MainFunction();
+        dwdReset(); // flash erase/write can outlast the watchdog (sys_main.c)
     }
 
     sensors_data.tps_data.tps1_value = 0;
