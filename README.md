@@ -15,7 +15,7 @@ Todos los frames de datos usan 8 bytes (salvo calibracion). El orden de bytes en
 | 1 | RX | `0x600` | `calibration_cmd_t` |
 | 2 | TX | `0x501` | `tps_data_t` |
 | 3 | TX | `0x502` | `front_data_t` |
-| 4 | TX | `0x401` | `implausibility_t` (por evento) |
+| 4 | TX | `0x401` | `implausibility_t` (cada 50 ms mientras dura la falla) |
 
 ### Frame recibido
 
@@ -76,7 +76,7 @@ Solo los comandos `1`, `2` y `4` escriben la calibracion en la FEE. Cualquier ot
 
 ### `0x401`: Implausibility
 
-`DLC = 8`. **No es periodico**: se manda una sola vez cuando se confirma una falla.
+`DLC = 8`. Se manda cuando se confirma una falla y despues cada 50 ms (`IMPLAUSIBILITY_REPEAT_MS`) mientras dure. Sin falla no se manda.
 
 | Bytes | Tipo | Significado |
 | --- | --- | --- |
@@ -84,7 +84,7 @@ Solo los comandos `1`, `2` y `4` escriben la calibracion en la FEE. Cualquier ot
 | `B1` | `uint8_t` | `1` = brake implausibility (`ERROR_BREAK_IMPLAUSIBILITY`), `0` = no |
 | `B2 - B7` | - | `0x00` |
 
-La main ECU (`tms570_main_ecu`) ya no detecta implausibilidades: las detectan las placas adc2can. Cuando la main ECU recibe un `0x401` con `B0 != 0` o `B1 != 0` fuerza drive off (igual que el cmd 8 del `0x600`). No guarda la falla: el auto vuelve a andar recien con un drive-on nuevo (cmd 7 por `0x600`).
+Las implausibilidades las detectan las placas adc2can (la main ECU ademas repite el chequeo de 10 % entre APPS con el `0x501`). Cuando la main ECU recibe un `0x401` con `B0 != 0` o `B1 != 0` fuerza drive off (igual que el cmd 8 del `0x600`) y rechaza un drive-on nuevo (cmd 7) mientras sigan llegando `0x401` (ultimos 200 ms). Recien cuando la falla desaparece el auto vuelve a andar, con un drive-on nuevo.
 
 ## Deteccion de implausibilidades
 
@@ -97,7 +97,7 @@ Se evalua en cada ciclo de `convert_data()` (`DATA_PROCESS_HZ = 150 Hz`, ~6.7 ms
 | Freno delantero | `B1` | `front_brake_raw_value` < 0.4 V o > 4.6 V (circuito abierto / corto) | T.4.3.3/4 (BSE) |
 
 - Los chequeos de rango se hacen sobre el valor **RAW** del ADC (filtrado), antes del clamp de `convert_data()`. El TPS en % esta clampeado a 0-100 y la presion de freno se clampea a 0 PSI por debajo de la calibracion, asi que un circuito abierto no se puede detectar desde los valores convertidos.
-- Deteccion por flanco: el `0x401` se manda una sola vez cuando la falla se confirma, no un frame por ciclo mientras dure. Cuando la condicion desaparece la deteccion se re-arma y se vuelve a mandar recien si la falla aparece de nuevo.
+- El `0x401` sale apenas se confirma la falla y se repite cada `IMPLAUSIBILITY_REPEAT_CYCLES` (8 ciclos, ~53 ms) mientras dure, asi la main ECU sabe que sigue activa y un frame perdido lo cubre el siguiente. Cuando la condicion desaparece deja de mandarse.
 - Si el mailbox 4 todavia tiene una transmision pendiente, se reintenta en el ciclo siguiente.
 - `B0`/`B1` reflejan las fallas confirmadas al momento de mandar el frame.
 - Rango RAW de falla fijo para TPS1, TPS2 y freno: 0.4 V (`SENSOR_RAW_MIN = 328`) a 4.6 V (`SENSOR_RAW_MAX = 3767`), ADC 12 bits sobre 5 V. No depende de la calibracion; las calibraciones (cmd `1` y `2`) solo se usan para convertir a % y PSI.
@@ -142,4 +142,4 @@ Umbrales (`#define` en [source/sensors.h](source/sensors.h)):
 - `0x600` (RX, DLC 1): comando de calibracion.
 - `0x501` (TX, DLC 8): TPS1 y TPS2.
 - `0x502` (TX, DLC 8): velocidades delanteras, direccion y presion de freno delantera.
-- `0x401` (TX, DLC 8, por evento): implausibilidad de TPS (`B0`) y freno delantero (`B1`).
+- `0x401` (TX, DLC 8, cada 50 ms mientras dura la falla): implausibilidad de TPS (`B0`) y freno delantero (`B1`).

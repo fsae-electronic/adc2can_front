@@ -87,7 +87,8 @@ static uint16_t filter_rpm_channel(wheel_speed_ch_t ch, uint16_t raw_rpm)
 }
 
 /* Implausibility detection: a fault is confirmed after IMPLAUSIBILITY_CYCLES consecutive cycles.
- * 0x401 is sent once on the rising edge of the confirmation and re-armed when the condition clears */
+ * 0x401 is sent right away on the confirmation, then every IMPLAUSIBILITY_REPEAT_CYCLES while
+ * the fault lasts. It stops when the condition clears */
 typedef struct
 {
     uint16_t counter;
@@ -97,6 +98,7 @@ typedef struct
 static implausibility_t tps_implausibility;
 static implausibility_t brake_implausibility;
 static bool implausibility_msg_pending = false;
+static uint16_t implausibility_repeat_counter = 0;
 
 static void update_implausibility(implausibility_t *fault, bool condition)
 {
@@ -144,16 +146,22 @@ static void check_implausibility(void)
 
 static void send_implausibility_to_can(void)
 {
-    if (!implausibility_msg_pending)
-    {
-        return;
-    }
-
-    // Fault cleared before it could be sent: nothing to report
+    // Fault cleared (before it could be sent, or since the last repeat): nothing to report
     if (!tps_implausibility.confirmed && !brake_implausibility.confirmed)
     {
         implausibility_msg_pending = false;
+        implausibility_repeat_counter = 0;
         return;
+    }
+
+    if (!implausibility_msg_pending)
+    {
+        implausibility_repeat_counter++;
+        if (implausibility_repeat_counter < IMPLAUSIBILITY_REPEAT_CYCLES)
+        {
+            return;
+        }
+        implausibility_msg_pending = true;
     }
 
     uint8_t implausibility_data[8] = {0};
@@ -164,6 +172,7 @@ static void send_implausibility_to_can(void)
     if (canTransmit(canREG1, canMESSAGE_BOX4, implausibility_data) != 0U)
     {
         implausibility_msg_pending = false;
+        implausibility_repeat_counter = 0;
     }
 }
 

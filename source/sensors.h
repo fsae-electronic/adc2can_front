@@ -19,6 +19,11 @@
 // Implausibility detection (T.4.2 APPS / T.4.3 BSE)
 #define IMPLAUSIBILITY_TIME_MS 100
 #define IMPLAUSIBILITY_CYCLES ((IMPLAUSIBILITY_TIME_MS * DATA_PROCESS_HZ + 999) / 1000)
+// 0x401 is repeated at this period while a confirmed fault lasts, so the main ECU
+// sees it is still active (it refuses a new drive-on meanwhile) and a lost frame
+// is covered by the next one
+#define IMPLAUSIBILITY_REPEAT_MS 50
+#define IMPLAUSIBILITY_REPEAT_CYCLES ((IMPLAUSIBILITY_REPEAT_MS * DATA_PROCESS_HZ + 999) / 1000)
 
 // Max deviation between TPS1 and TPS2 [%]
 #define TPS_IMPLAUSIBILITY_DIFF 10
